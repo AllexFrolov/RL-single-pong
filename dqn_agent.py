@@ -23,7 +23,9 @@ class DQNAgent:
         self.gamma = torch.Tensor([gamma]).to(device)
         self.epsilon = epsilon
 
-    def fit(self, env, steps, batch_size=200, train_every=10, batch_count=1):
+    def fit(self, env, steps, batch_size=200, train_every=10, batch_count=1, file_path=False):
+        if file_path:
+            self.load(file_path)
         rewards_history = []
         for step in range(steps):
             state = env.reset()
@@ -48,7 +50,7 @@ class DQNAgent:
             if step % 10:
                 clear_output(True)
                 plt.figure(figsize=[12, 6])
-                plt.title('Returns');
+                plt.title('Returns')
                 plt.grid()
                 plt.scatter(np.arange(len(rewards_history)), rewards_history, alpha=0.1)
                 plt.plot(moving_average(rewards_history, span=10, min_periods=10))
@@ -56,6 +58,8 @@ class DQNAgent:
 
             if step % train_every:
                 self.target_model.set_parameters(self.model.get_parameters())
+
+        self.save()
 
     def train(self, batch):
         state0_batch = []
@@ -73,7 +77,7 @@ class DQNAgent:
         state0_batch = torch.FloatTensor(state0_batch).to(device)
         state1_batch = torch.FloatTensor(state1_batch).to(device)
         reward_batch = torch.FloatTensor(reward_batch).to(device)
-        # terminal1_batch = torch.Tensor(terminal1_batch).to(device)
+        terminal1_batch = torch.Tensor(terminal1_batch).to(device)
         target_q_values1 = self.target_model(state1_batch).detach()
 
         q_values1, _ = torch.max(target_q_values1, dim=1)
@@ -83,11 +87,19 @@ class DQNAgent:
         rs = reward_batch + discounted_reward_batch
 
         q_values0 = self.model(state0_batch)
-        # max_q_values0, _ = torch.max(q_values0, dim=1)
         loss = self.loss_func(rs.reshape(-1, 1), q_values0)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+    def save(self):
+        torch.save({'memory': self.memory,
+                    'state_dict': self.model.state_dict}, 'DQNSave')
+
+    def load(self):
+        loader = torch.load('DQNSave')
+        self.memory = loader['memory']
+        self.model.state_dict = loader['state_dict']
 
     def policy(self, state):
         if random.random() <= self.epsilon:

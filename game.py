@@ -153,12 +153,12 @@ class Score:
 
     def hit(self):
         self.score += self.add_score
-        self.add_score += 1
+        self.add_score += 0
         if self.drawing:
             self.canvas.itemconfig(self.id, text=self.score)
 
     def hit_wall(self):
-        self.score -= 0.1
+        self.score -= 1
 
 
 class Game:
