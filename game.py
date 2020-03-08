@@ -89,9 +89,10 @@ class Paddle:
         start_1 = [40, 100, 150, 200, 250, 300, 360]
         random.shuffle(start_1)
         self.starting_point_x = start_1[0]
+        self.starting_point_y = 300
         if self.drawing:
-            self.canvas.move(self.id, self.starting_point_x, 300)
-        self.move(self.starting_point_x, 300)
+            self.canvas.move(self.id, self.starting_point_x, self.starting_point_y)
+        self.move(self.starting_point_x, self.starting_point_y)
         self.x = 0
 
     def reset(self):
@@ -100,9 +101,9 @@ class Paddle:
         self.starting_point_x = start_1[0]
         if self.drawing:
             self.canvas.coords(self.id, 0, 0, 100, 10)
-            self.canvas.move(self.id, self.starting_point_x, 300)
+            self.canvas.move(self.id, self.starting_point_x, self.starting_point_y)
         self.pos = [0, 0, 100, 10]
-        self.move(self.starting_point_x, 300)
+        self.move(self.starting_point_x, self.starting_point_y)
 
         self.x = 0
 
@@ -228,10 +229,10 @@ class Game:
             self.first_score = self.last_score
             self.last_score = self.score.score
             delta_score = self.last_score - self.first_score
-            if self.last_score >= 20:
-                self.stop()
+            if self.last_score >= 500:
+                # self.stop()
                 return self.get_state(), 100, True, 0
             return self.get_state(), delta_score, False, 0
         else:
-            self.stop()
+            # self.stop()
             return self.get_state(), -1, True, 0
