@@ -29,16 +29,15 @@ class DQNAgent:
 
     def fit(self, env, steps, batch_size=200, train_every=10, update_model=10, no_op_max=30, file_path=False):
         if file_path:
-            self.load()
+            self.load()  # Upload memory
         rewards_history = []
-        counter = 0
         for step in range(steps):
             state = env.reset()
             if self.transform:
                 state = self.transform(state)
             done = False
             rewards = 0
-            no_op = 0
+            no_op = 0  # Idle counter
             while not done:
                 with torch.no_grad():
                     action = self.policy(state)
@@ -48,19 +47,19 @@ class DQNAgent:
                         next_state = self.transform(next_state)
                     self.memory.append((state, action, reward, next_state, done))
                     state = next_state
+
                     if action == 1:
                         no_op += 1
                         if no_op == no_op_max:
-                            done=True
+                            done = True  # Stop playing
                     else:
                         no_op = 0
 
-            counter += 1
             rewards_history.append(rewards)
 
-            if counter % train_every:
+            # Train model
+            if (step + 1) % train_every:
                 if len(self.memory) > batch_size:
-                    # for _ in range(int(len(self.memory) / batch_size)):
                     batch = random.sample(self.memory, batch_size)
                     self.train(batch)
                 else:
@@ -68,11 +67,11 @@ class DQNAgent:
                     self.train(batch)
                 self.model.train(False)
 
-            if counter % update_model:
+            # Update target model
+            if (step + 1) % update_model:
                 self.target_model.set_parameters(self.model.get_parameters())
-
-
-            if step % 10:
+            # draw graph
+            if (step + 1) % 10:
                 clear_output(True)
                 plt.figure(figsize=[12, 6])
                 plt.title('Returns')
@@ -81,7 +80,7 @@ class DQNAgent:
                 plt.plot(moving_average(rewards_history, span=10, min_periods=10))
                 plt.show()
 
-        self.save()
+        self.save()  # save memory
 
     def train(self, batch):
         self.model.train(True)
@@ -90,18 +89,18 @@ class DQNAgent:
         state1_batch = torch.zeros((batch_size, 3, self.h, self.w))
         reward_batch = []
         action_batch = []
-        terminal1_batch = []
+        # terminal1_batch = []
         for ind, (state0, action, reward, state1, terminal1) in enumerate(batch):
             state0_batch[ind] = state0
             state1_batch[ind] = state1
             reward_batch.append(reward)
             action_batch.append(action)
-            terminal1_batch.append(0. if terminal1 else 1.)
+            # terminal1_batch.append(0. if terminal1 else 1.)
 
         state0_batch = state0_batch.to(device)
         state1_batch = state1_batch.to(device)
         reward_batch = torch.FloatTensor(reward_batch).to(device)
-        terminal1_batch = torch.Tensor(terminal1_batch).to(device)
+        # terminal1_batch = torch.Tensor(terminal1_batch).to(device)
         target_q_values1 = self.target_model(state1_batch).detach()
 
         q_values1, _ = torch.max(target_q_values1, dim=1)
