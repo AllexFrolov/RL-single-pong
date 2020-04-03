@@ -2,6 +2,7 @@ import random
 import time
 from tkinter import *
 import numpy as np
+import cv2
 
 
 class Ball:
@@ -22,10 +23,11 @@ class Ball:
         self.pos = [10, 10, 25, 25]
         self.move(245, 100)
         # список возможных направлений для старта
-        starts = [-20, -10, 10, 20]
+        starts = [-10, -5, 5, 10]
+
         random.shuffle(starts)
         self.x = starts[0]
-        self.y = -20
+        self.y = -10
 
         self.hit_bottom = False
 
@@ -42,10 +44,10 @@ class Ball:
         self.pos = [10, 10, 25, 25]
         self.move(245, 100)
 
-        starts = [-20, -10, 10, 20]
+        starts = [-10, -5, 5, 10]
         random.shuffle(starts)
         self.x = starts[0]
-        self.y = -20
+        self.y = -10
         self.hit_bottom = False
 
     def hit_paddle(self, pos):
@@ -63,16 +65,16 @@ class Ball:
         pos = self.pos
 
         if pos[1] <= 0:
-            self.y = 20
+            self.y = 10
         if pos[3] >= self.canvas_height:
             self.hit_bottom = True
 
         if self.hit_paddle(pos):
-            self.y = -20
+            self.y = -10
         if pos[0] <= 0:
-            self.x = 20
+            self.x = 10
         if pos[2] >= self.canvas_width:
-            self.x = -20
+            self.x = -10
 
 
 class Paddle:
@@ -158,7 +160,7 @@ class Score:
             self.canvas.itemconfig(self.id, text=self.score)
 
     def hit_wall(self):
-        self.score -= 1
+        self.score -= 0.1
 
 
 class Game:
@@ -188,8 +190,8 @@ class Game:
         self.score = Score(self.canvas, 'green', drawing)
         self.paddle = Paddle(self.canvas, self.score, 'White', drawing)
         self.ball = Ball(self.canvas, self.paddle, self.score, 'red', drawing)
-        self.ball_pos = [0, 0]
-        self.paddle_pos = [0, 0]
+        self.ball_pos = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.paddle_pos = [0, 0, 0, 0, 0, 0, 0, 0]
 
     def reset(self):
         self.paddle.reset()
@@ -204,14 +206,17 @@ class Game:
         return self.get_state()
 
     def get_state(self):
-        self.previous_ball_poss = self.ball_pos
-        self.previous_paddle_pos = self.paddle_pos
-        self.ball_pos = [(self.ball.pos[2] + self.ball.pos[0]) / 2 / 500,
+        # self.previous_ball_poss = self.ball_pos
+        # self.previous_paddle_pos = self.paddle_pos
+        for i in range(2):
+            self.ball_pos.pop(i)
+            self.paddle_pos.pop(i)
+        self.ball_pos += [(self.ball.pos[2] + self.ball.pos[0]) / 2 / 500,
                     (self.ball.pos[3] + self.ball.pos[1]) / 2 / 400]
-        self.paddle_pos = [(self.ball.pos[2] + self.ball.pos[0]) / 2 / 500,
+        self.paddle_pos += [(self.ball.pos[2] + self.ball.pos[0]) / 2 / 500,
                       (self.ball.pos[3] + self.ball.pos[1]) / 2 / 400]
 
-        return np.array(self.ball_pos + self.previous_ball_poss + self.paddle_pos + self.previous_paddle_pos)
+        return np.array(self.ball_pos + self.paddle_pos)
 
     def stop(self):
         if self.drawing:
@@ -229,9 +234,9 @@ class Game:
             self.first_score = self.last_score
             self.last_score = self.score.score
             delta_score = self.last_score - self.first_score
-            if self.last_score >= 500:
+            if self.last_score >= 2:
                 # self.stop()
-                return self.get_state(), 100, True, 0
+                return self.get_state(), 2, True, 0
             return self.get_state(), delta_score, False, 0
         else:
             # self.stop()
