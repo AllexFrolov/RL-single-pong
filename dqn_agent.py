@@ -160,15 +160,6 @@ class DQNAgent:
             loss.backward()
             self.optimizer.step()
 
-    # def save(self):
-    #     torch.save({'memory': self.memory,
-    #                 'state_dict': self.model.state_dict}, 'DQNSave.dqn')
-    #
-    # def load(self):
-    #     loader = torch.load('DQNSave.dqn')
-    #     self.memory = loader['memory']
-    #     self.model.state_dict = loader['state_dict']
-
     def policy(self, state):
         if random.uniform(0, 1) <= self.epsilon:
             act = random.randint(0, self.action_space - 1)
@@ -176,7 +167,7 @@ class DQNAgent:
         else:
             self.model.train(False)
             q_value = self.model(torch.as_tensor(state, device=self.device))
-            q_value = F.softmax(q_value)
+            q_value = F.softmax(q_value, dim=-1)
             # print(q_value)
             _, act = torch.max(q_value, dim=1)
             return act.detach().cpu().numpy()
