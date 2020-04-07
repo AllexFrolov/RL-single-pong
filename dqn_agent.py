@@ -139,21 +139,23 @@ class DQNAgent:
         next_states_t = torch.as_tensor(next_states, device=self.device)
         actions_t = torch.as_tensor(actions, device=self.device)
         rewards_t = torch.as_tensor(rewards, dtype=torch.float32, device=self.device)
-        # done_t = torch.as_tensor(dones, dtype=torch.bool, device=self.device)
+        done_t = torch.as_tensor(dones, dtype=torch.bool, device=self.device)
 
         # Value of the action taken previously (recorded in actions_v) in the state_t
-
         with torch.enable_grad():
             if self.double_DQN:
-                double_max_action = self.model(next_states_t).max(dim=1)[1]
-                double_max_action = double_max_action.detach()
-                target_output = self.target_model(next_states_t)
-                next_state_values = torch.gather(target_output, 1, double_max_action.view(-1, 1)).squeeze(-1)
+                aq_next_value = torch.argmax(self.model(next_states_t), dim=-1).detach()
+                next_state_values = (torch
+                                     .gather(self.target_model(next_states_t), 1, aq_next_value.view(-1, 1))
+                                     .squeeze(-1)
+                                     .detach()
+                                     )
+
             else:
-                next_state_values, _ = self.target_model(next_states_t).max(dim=1)
-            next_state_values = next_state_values.detach()
+                next_state_values = torch.argmax(self.target_model(next_states_t), dim=-1).detach()
+
             state_action_values = self.model(states_t).gather(1, actions_t.view(-1, 1)).squeeze(-1)
-            # next_state_values = next_state_values * (~done_t)
+            next_state_values = next_state_values * (~done_t)
             expected_state_action_values = rewards_t + (self.gamma ** self.n_multi_step) * next_state_values
             loss = self.loss_func(expected_state_action_values, state_action_values)
             self.optimizer.zero_grad()
@@ -167,7 +169,6 @@ class DQNAgent:
         else:
             self.model.train(False)
             q_value = self.model(torch.as_tensor(state, device=self.device))
-            q_value = F.softmax(q_value, dim=-1)
-            # print(q_value)
+            # q_value = F.softmax(q_value, dim=-1)
             _, act = torch.max(q_value, dim=1)
             return act.detach().cpu().numpy()
