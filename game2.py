@@ -9,11 +9,11 @@ class Canvas(object):
         self.color = color
         self.width = width
         self.height = height
-        self.c = np.zeros((self.height, self.width, 1), np.uint8)
+        self.c = np.zeros((self.height, self.width), np.uint8)
         self.c += self.color
 
     def reset(self):
-        self.c = np.zeros((self.height, self.width, 1), np.uint8)
+        self.c = np.zeros((self.height, self.width), np.uint8)
         self.c += self.color
 
     def shape(self):
@@ -140,25 +140,25 @@ class Game:
         self.draw = draw
         self.canvas = Canvas()
         self.scores = np.zeros(2)
-        self.states = np.zeros((3, self.canvas.shape()[0], self.canvas.shape()[1], 1), np.uint8)
+        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 3), np.uint8)
         self.score = Score()
         self.paddle = Paddle(self.canvas, self.score)
         self.ball = Ball(self.canvas, self.paddle, self.score)
 
     def reset(self):
         self.scores = np.zeros(2)
-        self.states = np.zeros((3, self.canvas.shape()[0], self.canvas.shape()[1], 1), np.uint8)
+        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 3), np.uint8)
         self.canvas.reset()
         self.score.reset()
         self.paddle.reset()
         self.ball.reset()
-        return self.canvas.c
+        return self.get_state()
 
     def get_state(self):
-        for ind in range(self.states.shape[0]-1):
-            self.states[ind] = - np.abs(self.states[ind+1])
-        self.states[-1] = self.canvas.c
-        return self.states.sum(axis=0, dtype=np.uint8)
+        for ind in range(self.states.shape[-1]-1):
+            self.states[..., ind] = self.states[..., ind+1]
+        self.states[..., -1] = self.canvas.c
+        return self.states
 
     def delta_score(self):
         self.scores[0] = self.scores[1]

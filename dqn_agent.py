@@ -37,7 +37,6 @@ class DQNAgent:
 
         rewards_history = []
         for step in range(steps):
-            print('Step:', step)
             state = env.reset()
             if self.transform:
                 state = torch.as_tensor(state, dtype=torch.uint8)
@@ -65,6 +64,7 @@ class DQNAgent:
                         self.target_model.set_parameters(self.model.get_parameters())
 
             rewards_history.append(rewards)
+            print(f'Step: {step}, rewards: {rewards:i}')
 
             # Step epsilon
             if self.epsilon > self.epsilon_end:
