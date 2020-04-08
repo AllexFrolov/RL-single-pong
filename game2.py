@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import random
 import time
+from torchvision.transforms import transforms
 
 
 class Canvas(object):
@@ -91,7 +92,6 @@ class Ball:
         self.color = color
         self.reset()
 
-
     def reset(self):
         self.pos = {'x': 0, 'y': 0}
         starting_point_x = int(self.canvas.shape()[1] / 2)
@@ -113,7 +113,7 @@ class Ball:
 
     def hit_paddle(self):
         if self.paddle.pos['y1'] <= self.pos['y'] + 1 and self.pos['y'] - 1 <= self.paddle.pos['y2']:
-            if self.paddle.pos['x1'] <= self.pos['x'] + self.radius <= self.paddle.pos['x2']+2:
+            if self.paddle.pos['x1'] <= self.pos['x'] + self.radius <= self.paddle.pos['x2'] + 2:
                 self.score.hit()
                 self.speed += self.acceleration
                 return True
@@ -140,14 +140,14 @@ class Game:
         self.draw = draw
         self.canvas = Canvas()
         self.scores = np.zeros(2)
-        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 3), np.uint8)
+        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 4), np.uint8)
         self.score = Score()
         self.paddle = Paddle(self.canvas, self.score)
         self.ball = Ball(self.canvas, self.paddle, self.score)
 
     def reset(self):
         self.scores = np.zeros(2)
-        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 3), np.uint8)
+        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 4), np.uint8)
         self.canvas.reset()
         self.score.reset()
         self.paddle.reset()
@@ -155,8 +155,8 @@ class Game:
         return self.get_state()
 
     def get_state(self):
-        for ind in range(self.states.shape[-1]-1):
-            self.states[..., ind] = self.states[..., ind+1]
+        for ind in range(self.states.shape[-1] - 1):
+            self.states[..., ind] = self.states[..., ind + 1]
         self.states[..., -1] = self.canvas.c
         return self.states
 
@@ -172,15 +172,16 @@ class Game:
             if self.draw:
                 cv2.imshow('hi', self.canvas.c)
                 cv2.waitKey(10)
-                # time.sleep(0.0001)
+                time.sleep(0.0001)
             if self.score.score == 5:
                 return self.get_state(), 3, True, self.canvas.c
 
             return self.get_state(), self.delta_score(), False, self.canvas.c
         else:
-            return self.get_state(), 0, True, self.canvas.c
+            return self.get_state(), -1, True, self.canvas.c
 
-    def stop(self):
+    @staticmethod
+    def stop():
         cv2.destroyWindow('hi')
 
 
