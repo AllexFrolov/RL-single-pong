@@ -33,6 +33,7 @@ class DQNAgent:
 
     def fit(self, env, steps, start_train_steps=20, batch_size=200, train_every=10,
             update_model=10):
+        mean_loss_history = []
         loss_history = []
         rewards_history = []
         for step in range(steps):
@@ -42,7 +43,7 @@ class DQNAgent:
                 state = self.transform(state)
             done = False
             rewards = 0
-            losses = 0
+            losses = []
             self.model.train(False)
             while not done:
                 with torch.no_grad():
@@ -57,14 +58,17 @@ class DQNAgent:
                     if self.n_iter % train_every == 0 and self.n_iter >= start_train_steps:
                         if len(self.memory) > batch_size:
                             batch = self.batch_create(batch_size)
-                            losses += self.train(batch)
+                            losses.append(self.train(batch))
+                    else:
+                        losses.append(0)
 
                     if self.n_iter % update_model == 0 and self.n_iter >= start_train_steps:
                         self.target_model.set_parameters(self.model.get_parameters())
 
             rewards_history.append(rewards)
-            loss_history.append(losses)
-            print(f'Step: {step}, rewards: {rewards}')
+            mean_loss_history.append(np.mean(losses))
+            loss_history += losses
+            print(f'Step: {step}, rewards: {rewards:.0f}, mean loss: {np.mean(losses):.3f}')
 
             # Step epsilon
             if self.epsilon > self.epsilon_end:
@@ -75,12 +79,17 @@ class DQNAgent:
             # draw graph
             if (step + 1) % 10 == 0:
                 clear_output(True)
-                plt.figure(figsize=[12, 6])
-                plt.title('Returns')
-                plt.grid()
-                plt.scatter(np.arange(len(rewards_history)), rewards_history, alpha=0.1)
-                plt.plot(moving_average(rewards_history, span=10, min_periods=10))
-                plt.plot(moving_average(loss_history, span=10, min_periods=10), alpha=0.5, color='r')
+                f, ax = plt.subplots(nrows=3, ncols=1, figsize=[20, 20])
+                ax[0].set_title('Returns')
+                ax[0].grid()
+                ax[0].scatter(np.arange(len(rewards_history)), rewards_history, alpha=0.1)
+                ax[0].plot(moving_average(rewards_history, span=10, min_periods=10))
+                ax[1].set_title('Mean Loss')
+                ax[1].grid()
+                ax[1].plot(moving_average(mean_loss_history, span=10, min_periods=10), color='r')
+                ax[2].set_title('Mean Loss')
+                ax[2].grid()
+                ax[2].plot(np.arange(self.n_iter), loss_history, color='b')
                 plt.show()
         env.stop()
 
