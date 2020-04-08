@@ -33,7 +33,7 @@ class DQNAgent:
 
     def fit(self, env, steps, start_train_steps=20, batch_size=200, train_every=10,
             update_model=10):
-
+        loss_history = []
         rewards_history = []
         for step in range(steps):
             state = env.reset()
@@ -42,26 +42,28 @@ class DQNAgent:
                 state = self.transform(state)
             done = False
             rewards = 0
-            # self.model.train(False)
+            losses = 0
+            self.model.train(False)
             while not done:
-                # with torch.no_grad():
-                action = self.policy(state)
-                next_state, reward, done, _ = env.step(action)
-                if self.transform:
-                    next_state = self.transform(torch.as_tensor(next_state, dtype=torch.uint8))
-                rewards += reward
-                self.memory.append(self.step(state.numpy(), action, reward, next_state.numpy(), done))
-                state = next_state
-                self.n_iter += 1
-                if self.n_iter % train_every == 0 and self.n_iter >= start_train_steps:
-                    if len(self.memory) > batch_size:
-                        batch = self.batch_create(batch_size)
-                        self.train(batch)
+                with torch.no_grad():
+                    action = self.policy(state)
+                    next_state, reward, done, _ = env.step(action)
+                    if self.transform:
+                        next_state = self.transform(torch.as_tensor(next_state, dtype=torch.uint8))
+                    rewards += reward
+                    self.memory.append(self.step(state.numpy(), action, reward, next_state.numpy(), done))
+                    state = next_state
+                    self.n_iter += 1
+                    if self.n_iter % train_every == 0 and self.n_iter >= start_train_steps:
+                        if len(self.memory) > batch_size:
+                            batch = self.batch_create(batch_size)
+                            losses += self.train(batch)
 
-                if self.n_iter % update_model == 0 and self.n_iter >= start_train_steps:
-                    self.target_model.set_parameters(self.model.get_parameters())
+                    if self.n_iter % update_model == 0 and self.n_iter >= start_train_steps:
+                        self.target_model.set_parameters(self.model.get_parameters())
 
             rewards_history.append(rewards)
+            loss_history.append(losses)
             print(f'Step: {step}, rewards: {rewards}')
 
             # Step epsilon
@@ -78,6 +80,7 @@ class DQNAgent:
                 plt.grid()
                 plt.scatter(np.arange(len(rewards_history)), rewards_history, alpha=0.1)
                 plt.plot(moving_average(rewards_history, span=10, min_periods=10))
+                plt.plot(moving_average(loss_history, span=10, min_periods=10), alpha=0.5, color='r')
                 plt.show()
         env.stop()
 
@@ -127,8 +130,8 @@ class DQNAgent:
                 )
 
     def train(self, batch):
-        # self.model.train(True)
-        # self.target_model.train(False)
+        self.model.train(True)
+        self.target_model.train(False)
         states, actions, next_states, rewards, terminate = batch
 
         # convert the data in tensors
@@ -139,25 +142,26 @@ class DQNAgent:
         terminate_t = torch.as_tensor(terminate, dtype=torch.bool, device=self.device)
 
         # Value of the action taken previously (recorded in actions_v) in the state_t
-        # with torch.enable_grad():
-        if self.double_DQN:
-            aq_next_value = torch.argmax(self.model(next_states_t), dim=-1).detach()
-            next_state_values = (torch
-                                 .gather(self.target_model(next_states_t), 1, aq_next_value.view(-1, 1))
-                                 .squeeze(-1)
-                                 .detach()
-                                 )
+        with torch.enable_grad():
+            if self.double_DQN:
+                aq_next_value = torch.argmax(self.model(next_states_t), dim=-1).detach()
+                next_state_values = (torch
+                                     .gather(self.target_model(next_states_t), 1, aq_next_value.view(-1, 1))
+                                     .squeeze(-1)
+                                     .detach()
+                                     )
 
-        else:
-            next_state_values = torch.max(self.target_model(next_states_t), dim=-1)[0]
+            else:
+                next_state_values = torch.max(self.target_model(next_states_t), dim=-1)[0]
 
-        state_action_values = self.model(states_t).gather(1, actions_t.view(-1, 1)).squeeze(-1)
-        # next_state_values = next_state_values * (~terminated_t)
-        expected_state_action_values = rewards_t + (self.gamma ** self.n_multi_step) * next_state_values
-        loss = self.loss_func(expected_state_action_values, state_action_values)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+            state_action_values = self.model(states_t).gather(1, actions_t.view(-1, 1)).squeeze(-1)
+            # next_state_values = next_state_values * (~terminated_t)
+            expected_state_action_values = rewards_t + (self.gamma ** self.n_multi_step) * next_state_values
+            loss = self.loss_func(expected_state_action_values, state_action_values)
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+        return loss.item()
 
     def policy(self, state):
         if random.uniform(0, 1) <= self.epsilon:
