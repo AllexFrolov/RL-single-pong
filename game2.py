@@ -2,7 +2,6 @@ import numpy as np
 import cv2
 import random
 import time
-from torchvision.transforms import transforms
 
 
 class Canvas(object):
@@ -173,8 +172,8 @@ class Game:
                 cv2.imshow('hi', self.canvas.c)
                 cv2.waitKey(10)
                 time.sleep(0.0001)
-            if self.score.score == 5:
-                return self.get_state(), 3, True, self.canvas.c
+            if self.score.score == 3:
+                return self.get_state(), 1, True, self.canvas.c
 
             return self.get_state(), self.delta_score(), False, self.canvas.c
         else:
@@ -182,7 +181,10 @@ class Game:
 
     @staticmethod
     def stop():
-        cv2.destroyWindow('hi')
+        try:
+            cv2.destroyWindow('hi')
+        except:
+            pass
 
 
 def main():
