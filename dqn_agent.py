@@ -79,7 +79,7 @@ class DQNAgent:
             # draw graph
             if (step + 1) % 10 == 0:
                 clear_output(True)
-                f, ax = plt.subplots(nrows=3, ncols=1, figsize=[20, 20])
+                f, ax = plt.subplots(nrows=3, ncols=1, figsize=[10, 15])
                 ax[0].set_title('Returns')
                 ax[0].grid()
                 ax[0].scatter(np.arange(len(rewards_history)), rewards_history, alpha=0.1)
@@ -87,7 +87,7 @@ class DQNAgent:
                 ax[1].set_title('Mean Loss')
                 ax[1].grid()
                 ax[1].plot(moving_average(mean_loss_history, span=10, min_periods=10), color='r')
-                ax[2].set_title('Mean Loss')
+                ax[2].set_title('Loss')
                 ax[2].grid()
                 ax[2].plot(np.arange(self.n_iter), loss_history, color='b')
                 plt.show()
@@ -164,7 +164,7 @@ class DQNAgent:
                 next_state_values = torch.max(self.target_model(next_states_t), dim=-1)[0]
 
             state_action_values = self.model(states_t).gather(1, actions_t.view(-1, 1)).squeeze(-1)
-            # next_state_values = next_state_values * (~terminated_t)
+            next_state_values = next_state_values * (~terminate_t)
             expected_state_action_values = rewards_t + (self.gamma ** self.n_multi_step) * next_state_values
             loss = self.loss_func(expected_state_action_values, state_action_values)
             self.optimizer.zero_grad()
