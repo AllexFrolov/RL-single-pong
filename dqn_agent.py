@@ -11,7 +11,7 @@ moving_average = lambda x, **kw: pd.DataFrame({'x': np.asarray(x)}).x.ewm(**kw).
 
 
 class DQNAgent:
-    def __init__(self, model, target_model, optimizer, loss_func, action_space, memory, n_multi_step=4,
+    def __init__(self, model, target_model, loss_func, action_space, memory, n_multi_step=4,
                  transform=None, device='cpu', double_dqn=False, gamma=0.99, epsilon_start=1.0, epsilon_end=0.05):
         self.device = device
         self.double_DQN = double_dqn
@@ -20,7 +20,6 @@ class DQNAgent:
         self.model = model
         self.h = self.model.h
         self.w = self.model.w
-        self.optimizer = optimizer
         self.loss_func = loss_func
         self.target_model = target_model
         self.action_space = action_space
@@ -30,12 +29,16 @@ class DQNAgent:
         self.epsilon_end = epsilon_end
         self.step = namedtuple('Step', ['state', 'action', 'reward', 'next_state', 'done'], rename=False)
         self.n_iter = 0
+        self.loss_history = deque(maxlen=memory)
+        self.rewards_history = []
+        self.mean_loss_history = []
 
-    def fit(self, env, steps, start_train_steps=20, batch_size=200, train_every=10,
+    def fit(self, env, steps, optimizer, start_train_steps=20, batch_size=200, train_every=10,
             update_model=10):
-        mean_loss_history = []
-        loss_history = []
-        rewards_history = []
+        self.optimizer = optimizer
+        # mean_loss_history = []
+        # loss_history = []
+        # rewards_history = []
         for step in range(steps):
             state = env.reset()
             if self.transform:
@@ -65,9 +68,9 @@ class DQNAgent:
                     if self.n_iter % update_model == 0 and self.n_iter >= start_train_steps:
                         self.target_model.set_parameters(self.model.get_parameters())
 
-            rewards_history.append(rewards)
-            mean_loss_history.append(np.mean(losses))
-            loss_history += losses
+            self.rewards_history.append(rewards)
+            self.mean_loss_history.append(np.mean(losses))
+            self.loss_history += losses
             print(f'Step: {step}, rewards: {rewards:.0f}, mean loss: {np.mean(losses):.3f}')
 
             # Step epsilon
@@ -82,14 +85,14 @@ class DQNAgent:
                 f, ax = plt.subplots(nrows=3, ncols=1, figsize=[10, 15])
                 ax[0].set_title('Returns')
                 ax[0].grid()
-                ax[0].scatter(np.arange(len(rewards_history)), rewards_history, alpha=0.1)
-                ax[0].plot(moving_average(rewards_history, span=10, min_periods=10))
+                ax[0].scatter(np.arange(len(self.rewards_history)), self.rewards_history, alpha=0.1)
+                ax[0].plot(moving_average(self.rewards_history, span=10, min_periods=10))
                 ax[1].set_title('Mean Loss')
                 ax[1].grid()
-                ax[1].plot(moving_average(mean_loss_history, span=10, min_periods=10), color='r')
+                ax[1].plot(moving_average(self.mean_loss_history, span=10, min_periods=10), color='r')
                 ax[2].set_title('Loss')
                 ax[2].grid()
-                ax[2].plot(np.arange(self.n_iter), loss_history, color='b')
+                ax[2].plot(np.arange(len(self.loss_history)), self.loss_history, color='b')
                 plt.show()
         env.stop()
 
