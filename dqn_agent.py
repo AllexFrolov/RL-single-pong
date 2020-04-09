@@ -169,7 +169,11 @@ class DQNAgent:
             loss = self.loss_func(expected_state_action_values, state_action_values)
             self.optimizer.zero_grad()
             loss.backward()
+            for param in self.model.parameters():
+                param.grad.data.clamp_(-1, 1)
             self.optimizer.step()
+            if loss.item() > 1:
+                return 1
         return loss.item()
 
     def policy(self, state):
