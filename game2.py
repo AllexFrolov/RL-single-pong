@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import random
 import time
-
+import math
 
 class Canvas(object):
     def __init__(self, width=160, height=210, color=255):
@@ -159,6 +159,17 @@ class Game:
         self.states[..., -1] = self.canvas.c
         return self.states
 
+    @staticmethod
+    def distance(coord1, coord2):
+        return ((coord1[0] - coord2[0])**2 + (coord1[1] - coord2[1])**2)**0.5
+
+    def get_ball_distance(self):
+        x_pad_cent = (self.paddle.pos['x1'] + self.paddle.pos['x2']) / 2
+        y_pad_cent = (self.paddle.pos['y1'] + self.paddle.pos['y2']) / 2
+        x_ball = self.ball.pos['x']
+        y_ball = self.ball.pos['y']
+        return - self.distance((x_pad_cent, y_pad_cent), (x_ball, y_ball)) / 241
+
     def delta_score(self):
         self.scores[0] = self.scores[1]
         self.scores[1] = self.score.score
@@ -172,10 +183,10 @@ class Game:
                 cv2.imshow('hi', self.canvas.c)
                 cv2.waitKey(10)
                 time.sleep(0.0001)
-            if self.score.score == 3:
-                return self.get_state(), 1, True, self.canvas.c
+            # if self.score.score == 3:
+            #     return self.get_state(), 1, True, self.canvas.c
 
-            return self.get_state(), self.delta_score(), False, self.canvas.c
+            return self.get_state(), self.get_ball_distance(), False, self.canvas.c
         else:
             return self.get_state(), -1, True, self.canvas.c
 
@@ -195,8 +206,8 @@ def main():
         _ = game.reset()
         while not done:
             state, reward, done, _ = game.step(random.randint(0, 2))
-            if reward > 0:
-                print(reward)
+            # if reward > 0:
+            print(reward)
             rewards += reward
 
         print(rewards)
