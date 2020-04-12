@@ -139,14 +139,14 @@ class Game:
         self.draw = draw
         self.canvas = Canvas()
         self.scores = np.zeros(2)
-        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 4), np.uint8)
+        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 3), np.uint8)
         self.score = Score()
         self.paddle = Paddle(self.canvas, self.score)
         self.ball = Ball(self.canvas, self.paddle, self.score)
 
     def reset(self):
         self.scores = np.zeros(2)
-        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 4), np.uint8)
+        self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 3), np.uint8)
         self.canvas.reset()
         self.score.reset()
         self.paddle.reset()
@@ -161,14 +161,14 @@ class Game:
 
     @staticmethod
     def distance(coord1, coord2):
-        return ((coord1[0] - coord2[0])**2 + (coord1[1] - coord2[1])**2)**0.5
+        return ((coord1[1] - coord2[1])**2)**0.5
 
     def get_ball_distance(self):
         x_pad_cent = (self.paddle.pos['x1'] + self.paddle.pos['x2']) / 2
         y_pad_cent = (self.paddle.pos['y1'] + self.paddle.pos['y2']) / 2
         x_ball = self.ball.pos['x']
         y_ball = self.ball.pos['y']
-        return - self.distance((x_pad_cent, y_pad_cent), (x_ball, y_ball)) / 241
+        return - self.distance((x_pad_cent, y_pad_cent), (x_ball, y_ball)) / 188
 
     def delta_score(self):
         self.scores[0] = self.scores[1]
@@ -179,6 +179,7 @@ class Game:
         if not self.ball.hit_right:
             self.paddle.step(action)
             self.ball.step()
+            self.ds = self.delta_score()
             if self.draw:
                 cv2.imshow('hi', self.canvas.c)
                 cv2.waitKey(10)
@@ -186,9 +187,9 @@ class Game:
             # if self.score.score == 3:
             #     return self.get_state(), 1, True, self.canvas.c
 
-            return self.get_state(), self.get_ball_distance(), False, self.canvas.c
+            return self.get_state(), self.get_ball_distance(), False, self.ds
         else:
-            return self.get_state(), -1, True, self.canvas.c
+            return self.get_state(), -1, True, self.ds
 
     @staticmethod
     def stop():
