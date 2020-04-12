@@ -55,7 +55,7 @@ class DQNAgent:
                     if self.transform:
                         next_state = self.transform(torch.as_tensor(next_state, dtype=torch.uint8))
                     rewards += reward
-                    self.memory.append(self.step(state.numpy(), action, reward, next_state.numpy(), done))
+                    self.memory.append(self.step(state, action, reward, next_state, done))
                     state = next_state
                     self.n_iter += 1
                     if self.n_iter % train_every == 0 and self.n_iter >= start_train_steps:
