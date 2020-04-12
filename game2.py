@@ -2,19 +2,19 @@ import numpy as np
 import cv2
 import random
 import time
-import math
+
 
 class Canvas(object):
-    def __init__(self, width=160, height=210, color=255):
-        self.color = color
+    def __init__(self, width=160, height=210):
+        self.color = (255, 255, 255)
         self.width = width
         self.height = height
-        self.c = np.zeros((self.height, self.width), np.uint8)
-        self.c += self.color
+        self.c = np.zeros((self.height, self.width, 3), np.uint8)
+        self.c += np.asarray(self.color, dtype=np.uint8)
 
     def reset(self):
-        self.c = np.zeros((self.height, self.width), np.uint8)
-        self.c += self.color
+        self.c = np.zeros((self.height, self.width, 3), np.uint8)
+        self.c += np.asarray(self.color, dtype=np.uint8)
 
     def shape(self):
         return self.c.shape
@@ -30,13 +30,10 @@ class Score:
     def hit(self):
         self.score += 1
 
-    def hit_wall(self):
-        self.score -= 0.0
-
 
 class Paddle:
-    def __init__(self, canvas, score, color=20):
-        self.color = color
+    def __init__(self, canvas, score):
+        self.color = (20, 20, 20)
         self.canvas = canvas
         self.score = score
         self.reset()
@@ -72,23 +69,22 @@ class Paddle:
         self.turn(action)
         if self.pos['y1'] <= 0 and self.y < 0:
             self.y = 0
-            self.score.hit_wall()
 
         elif self.pos['y2'] >= self.canvas.shape()[0] and self.y > 0:
             self.y = 0
-            self.score.hit_wall()
 
         self.move(0, self.y)
 
 
 class Ball:
-    def __init__(self, canvas, paddle, score, color=100):
+    def __init__(self, canvas, paddle, score):
         self.canvas = canvas
         self.paddle = paddle
         self.score = score
         self.pos = {'x': 0, 'y': 0}
         self.radius = 7
-        self.color = color
+        self.color = (100, 100, 100)
+        self.hitting_recently = False
         self.reset()
 
     def reset(self):
@@ -111,10 +107,13 @@ class Ball:
                    radius=self.radius, color=self.color, thickness=-1)
 
     def hit_paddle(self):
-        if self.paddle.pos['y1'] <= self.pos['y'] + 1 and self.pos['y'] - 1 <= self.paddle.pos['y2']:
-            if self.paddle.pos['x1'] <= self.pos['x'] + self.radius <= self.paddle.pos['x2'] + 2:
+        if self.paddle.pos['y1'] <= self.pos['y'] + 1 and \
+                self.pos['y'] - 1 <= self.paddle.pos['y2'] and \
+                not self.hitting_recently:
+            if self.paddle.pos['x1'] <= self.pos['x'] + self.radius <= self.paddle.pos['x2']:
                 self.score.hit()
                 self.speed += self.acceleration
+                self.hitting_recently = True
                 return True
         return False
 
@@ -123,15 +122,20 @@ class Ball:
 
         if self.pos['y'] - self.radius <= 0:
             self.y = self.speed
+            self.hitting_recently = False
         if self.pos['y'] + self.radius >= self.canvas.shape()[0]:
             self.y = -self.speed
+            self.hitting_recently = False
 
         if self.hit_paddle():
             self.x = -self.speed
         if self.pos['x'] - self.radius <= 0:
             self.x = self.speed
+            self.hitting_recently = False
         if self.pos['x'] + self.radius >= self.canvas.shape()[1]:
             self.hit_right = True
+            self.hitting_recently = False
+            self.score.hit()
 
 
 class Game:
@@ -144,24 +148,22 @@ class Game:
         self.paddle = Paddle(self.canvas, self.score)
         self.ball = Ball(self.canvas, self.paddle, self.score)
 
-    def reset(self):
-        self.scores = np.zeros(2)
+    def reset(self, reset_score=True):
         self.states = np.zeros((self.canvas.shape()[0], self.canvas.shape()[1], 3), np.uint8)
         self.canvas.reset()
-        self.score.reset()
+        if reset_score:
+            self.score.reset()
+            self.scores = np.zeros(2)
         self.paddle.reset()
         self.ball.reset()
         return self.get_state()
 
     def get_state(self):
-        for ind in range(self.states.shape[-1] - 1):
-            self.states[..., ind] = self.states[..., ind + 1]
-        self.states[..., -1] = self.canvas.c
-        return self.states
+        return self.canvas.c
 
     @staticmethod
     def distance(coord1, coord2):
-        return ((coord1[1] - coord2[1])**2)**0.5
+        return ((coord1[1] - coord2[1]) ** 2) ** 0.5
 
     def get_ball_distance(self):
         x_pad_cent = (self.paddle.pos['x1'] + self.paddle.pos['x2']) / 2
@@ -176,20 +178,25 @@ class Game:
         return self.scores[1] - self.scores[0]
 
     def step(self, action):
+        state = self.get_state()
+        ds = self.delta_score()
+        if self.score.score == 10:
+            done = True
+        else:
+            done = False
+
         if not self.ball.hit_right:
             self.paddle.step(action)
             self.ball.step()
-            self.ds = self.delta_score()
             if self.draw:
                 cv2.imshow('hi', self.canvas.c)
                 cv2.waitKey(10)
                 time.sleep(0.0001)
-            # if self.score.score == 3:
-            #     return self.get_state(), 1, True, self.canvas.c
-
-            return self.get_state(), self.get_ball_distance(), False, self.ds
+            return state, ds, done, self.score.score
         else:
-            return self.get_state(), -1, True, self.ds
+            if not done:
+                state = self.reset(False)
+            return state, -ds, done, self.score.score
 
     @staticmethod
     def stop():
@@ -201,14 +208,14 @@ class Game:
 
 def main():
     game = Game(True)
-    for _ in range(5):
+    for _ in range(2):
         done = False
         rewards = 0
         _ = game.reset()
         while not done:
-            state, reward, done, _ = game.step(random.randint(0, 2))
-            # if reward > 0:
-            print(reward)
+            state, reward, done, score = game.step(random.randint(0, 2))
+            if reward != 0:
+                print(f'reward: {reward}, score: {score}')
             rewards += reward
 
         print(rewards)
