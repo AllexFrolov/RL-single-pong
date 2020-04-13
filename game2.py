@@ -139,7 +139,11 @@ class Ball:
 
 
 class Game:
-    def __init__(self, draw=False):
+    def __init__(self, draw=False, video=False):
+        self.video = video
+        if video:
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            self.video_out = cv2.VideoWriter('output.avi', fourcc, 60, (160, 210))
         self.draw = draw
         self.canvas = Canvas()
         self.scores = np.zeros(2)
@@ -157,6 +161,9 @@ class Game:
         self.paddle.reset()
         self.ball.reset()
         return self.get_state()
+
+    def write_video(self):
+        self.video_out.write(self.get_state())
 
     def get_state(self):
         return self.canvas.c
@@ -180,6 +187,8 @@ class Game:
     def step(self, action):
         state = self.get_state()
         ds = self.delta_score()
+        if self.video:
+            self.write_video()
         if self.score.score == 10:
             done = True
         else:
@@ -192,15 +201,15 @@ class Game:
                 cv2.imshow('hi', self.canvas.c)
                 cv2.waitKey(10)
                 time.sleep(0.0001)
-            return state, ds, done, self.score.score
+            return state, ds, done, state
         else:
             if not done:
                 state = self.reset(False)
-            return state, -ds, done, self.score.score
+            return state, -ds, done, state
 
-    @staticmethod
-    def stop():
+    def stop(self):
         try:
+            self.video_out.release()
             cv2.destroyWindow('hi')
         except:
             pass

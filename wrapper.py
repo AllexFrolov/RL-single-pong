@@ -1,12 +1,16 @@
 import numpy as np
 from collections import deque
 from torchvision import transforms
+from importlib import reload
+import game2
+
+game2 = reload(game2)
 from game2 import Game
 
 
 class MaxAndSkipEnv:
     def __init__(self, env, skip=4):
-        """Return only every `skip`-th frame"""
+        """Transform and Return only every `skip`-th frame"""
         # most recent raw observations (for max pooling across time steps)
         self._obs_buffer = np.zeros((2,) + env.canvas.c.shape, dtype=np.uint8)
         self._skip = skip
@@ -52,8 +56,6 @@ class FrameStack:
         """Stack k last frames.
         Returns lazy array, which is much more memory efficient.
         See Also
-        --------
-        baselines.common.atari_wrappers.LazyFrames
         """
         self.env = env
         self.k = k
@@ -107,8 +109,8 @@ class LazyFrames(object):
         return self._force()[i]
 
 
-def make_env(draw=False):
-    env = Game(draw)
+def make_env(draw=False, video=False):
+    env = Game(draw, video)
     env = MaxAndSkipEnv(env)
     env = FrameStack(env)
     return env
