@@ -1,2 +1,3 @@
 # RL-single-pong
-![] (Images/game.gif)
+Обучаем double DQN играть в простейшую игру где нужно отбивать мяч
+![](/Images/game.gif)
