@@ -2,10 +2,10 @@ import numpy as np
 from collections import deque
 from torchvision import transforms
 from importlib import reload
-import game2
+import game
 
-game2 = reload(game2)
-from game2 import Game
+game = reload(game)
+from game import Game
 
 
 class MaxAndSkipEnv:
