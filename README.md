@@ -4,8 +4,8 @@
 ![](/Images/game.gif)
 
 Для экспериментов над входными данными, функцией reward, было принято решение написать свою
-[игру](https://github.com/AllexFrolov/RL-single-pong/blob/master/game.py), а не брать готовую например из Gym.
-state.shape = (210, 160, 3)
+[игру](https://github.com/AllexFrolov/RL-single-pong/blob/master/game.py), а не брать готовую например из Gym.  
+state.shape = (210, 160, 3)  
 reward - +1 за удар по мячу, -1 за промах.
 
 Сам метод DQN реализован в [dqn_agent](https://github.com/AllexFrolov/RL-single-pong/blob/master/dqn_agent.py)
